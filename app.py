@@ -2,292 +2,436 @@ import streamlit as st
 import pickle
 import pdfplumber
 import re
-import matplotlib.pyplot as plt
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- PAGE CONFIG ---------------- #
 
 st.set_page_config(
-    page_title="AI Resume Screening System",
+    page_title="AI Resume Screening & Job Matching System",
     page_icon="📄",
     layout="wide"
 )
 
-# ---------------- LOAD MODEL ----------------
+# ---------------- LOAD MODEL ---------------- #
 
 model = pickle.load(open("model.pkl", "rb"))
 vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
 
-# ---------------- CLEAN TEXT ----------------
+# ---------------- CUSTOM CSS ---------------- #
 
-def clean_text(text):
-    text = re.sub(r'http\\S+', '', text)
-    text = re.sub(r'[^A-Za-z ]', '', text)
-    text = text.lower()
-    return text
+st.markdown("""
+<style>
 
-# ---------------- EXTRACT TEXT ----------------
+.main {
+    background-color: #0E1117;
+}
 
-def extract_text(pdf_file):
-    text = ""
+h1 {
+    color: #8BE78B;
+    text-align: center;
+    font-size: 45px;
+}
 
-    with pdfplumber.open(pdf_file) as pdf:
-        for page in pdf.pages:
+.stTextArea textarea {
+    background-color: #262730;
+    color: white;
+}
 
-            extracted = page.extract_text()
+section[data-testid="stSidebar"] {
+    background-color: #161A23;
+}
 
-            if extracted:
-                text += extracted
+.skill-box {
+    background-color: #1E88E5;
+    padding: 8px 14px;
+    border-radius: 10px;
+    color: white;
+    margin: 5px;
+    display: inline-block;
+    font-size: 14px;
+}
 
-    return text
+.match-box {
+    background-color: #1F2937;
+    padding: 20px;
+    border-radius: 15px;
+    text-align: center;
+    color: white;
+}
 
-# ---------------- SIDEBAR ----------------
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- SIDEBAR ---------------- #
 
 st.sidebar.title("📌 About Project")
 
-st.sidebar.info(
-    """
-    AI-powered Resume Screening System
+st.sidebar.info("""
+### AI Resume Screening & Job Matching System
 
-    Features:
-    ✅ Resume Category Prediction
-    ✅ Skill Extraction
-    ✅ ATS Resume Score
-    ✅ Missing Skills Detection
-    ✅ Skill Match Percentage
-    ✅ PDF Resume Upload
-    """
-)
+This AI-powered application helps:
 
-st.sidebar.write("Built using:")
-st.sidebar.write("- Python")
-st.sidebar.write("- Machine Learning")
-st.sidebar.write("- NLP")
-st.sidebar.write("- Streamlit")
+✅ Resume Category Prediction  
+✅ Skill Extraction  
+✅ Resume-Job Matching  
+✅ ATS Score Analysis  
+✅ Eligibility Checking  
+✅ Missing Skill Recommendation  
+✅ Recruiter AI Feedback  
 
-# ---------------- TITLE ----------------
+Built using:
+- Python
+- Machine Learning
+- NLP
+- Streamlit
+""")
 
-st.markdown(
-    """
-    <h1 style='text-align: center; color: #4CAF50;'>
-    📄 AI Resume Screening System
-    </h1>
-    """,
-    unsafe_allow_html=True
-)
+# ---------------- TITLE ---------------- #
+
+st.title("📄 AI Resume Screening & Job Matching System")
 
 st.markdown(
-    """
-    <p style='text-align: center; font-size:18px;'>
-    Upload your resume and let AI analyze it instantly 🚀
-    </p>
-    """,
+    "<h4 style='text-align:center;'>Analyze resumes intelligently using AI & ATS 🚀</h4>",
     unsafe_allow_html=True
 )
 
 st.write("---")
 
-# ---------------- FILE UPLOAD ----------------
+# ---------------- JOB DESCRIPTION FIRST ---------------- #
+
+st.subheader("🏢 Recruiter Job Requirements")
+
+job_description = st.text_area(
+    "Paste Job Description / Required Skills",
+    height=220,
+    placeholder="""
+Example:
+
+Python
+Machine Learning
+SQL
+NLP
+Streamlit
+Communication
+GitHub
+"""
+)
+
+# ---------------- RESUME UPLOAD ---------------- #
+
+st.write("---")
+
+st.subheader("📄 Candidate Resume")
 
 uploaded_file = st.file_uploader(
-    "📤 Upload Resume PDF",
+    "Upload Resume PDF",
     type=["pdf"]
 )
 
-# ---------------- MAIN LOGIC ----------------
+# ---------------- SKILLS LIST ---------------- #
+
+skills = [
+
+    # Programming
+    "python",
+    "java",
+    "c",
+    "c++",
+    "javascript",
+
+    # Web
+    "html",
+    "css",
+    "react",
+    "nodejs",
+    "flask",
+    "django",
+    "streamlit",
+
+    # AI / Data
+    "machine learning",
+    "deep learning",
+    "nlp",
+    "tensorflow",
+    "pytorch",
+    "data science",
+    "data analysis",
+
+    # Database
+    "sql",
+    "mysql",
+    "mongodb",
+
+    # Tools
+    "excel",
+    "power bi",
+    "git",
+    "github",
+
+    # Soft Skills
+    "communication",
+    "leadership",
+    "problem solving",
+    "teamwork",
+
+    # Cloud
+    "aws",
+    "azure",
+    "devops"
+]
+
+# ---------------- PROCESS RESUME ---------------- #
 
 if uploaded_file is not None:
 
-    with st.spinner("Analyzing Resume..."):
+    text = ""
 
-        # Extract text
-        resume_text = extract_text(uploaded_file)
+    with pdfplumber.open(uploaded_file) as pdf:
 
-        # Clean text
-        cleaned_resume = clean_text(resume_text)
+        for page in pdf.pages:
 
-        # Vectorize
-        resume_vector = vectorizer.transform([cleaned_resume])
+            extracted_text = page.extract_text()
 
-        # Predict
-        prediction = model.predict(resume_vector)
+            if extracted_text:
 
-    st.success("✅ Resume Analysis Completed")
+                text += extracted_text
 
-    # ---------------- RESULT SECTION ----------------
+    # ---------------- CLEAN TEXT ---------------- #
 
-    col1, col2 = st.columns(2)
+    cleaned_resume = re.sub(r"[^a-zA-Z ]", " ", text)
+    cleaned_resume = cleaned_resume.lower()
 
-    with col1:
+    # ---------------- SMART CATEGORY PREDICTION ---------------- #
 
-        st.subheader("🎯 Predicted Job Category")
+    if (
+        "machine learning" in cleaned_resume
+        or "deep learning" in cleaned_resume
+        or "nlp" in cleaned_resume
+        or "tensorflow" in cleaned_resume
+    ):
 
-        st.info(prediction[0])
+        predicted_category = "AI / ML Engineer"
 
-    # ---------------- SKILLS ----------------
+    elif (
+        "python" in cleaned_resume
+        or "flask" in cleaned_resume
+        or "django" in cleaned_resume
+    ):
 
-    skills = [
-        "python",
-        "sql",
-        "machine learning",
-        "deep learning",
-        "excel",
-        "power bi",
-        "tableau",
-        "java",
-        "html",
-        "css",
-        "javascript",
-        "communication",
-        "data analysis",
-        "react",
-        "mongodb",
-        "nodejs",
-        "streamlit",
-        "nlp",
-        "tensorflow",
-        "pandas"
-    ]
+        predicted_category = "Python Developer"
+
+    elif (
+        "html" in cleaned_resume
+        or "css" in cleaned_resume
+        or "javascript" in cleaned_resume
+    ):
+
+        predicted_category = "Web Developer"
+
+    elif (
+        "sql" in cleaned_resume
+        or "power bi" in cleaned_resume
+        or "excel" in cleaned_resume
+    ):
+
+        predicted_category = "Data Analyst"
+
+    else:
+
+        predicted_category = "Software Engineer"
+
+    # ---------------- SKILLS FOUND ---------------- #
 
     found_skills = []
 
     for skill in skills:
-        if skill in cleaned_resume:
+
+        if skill.lower() in cleaned_resume:
+
             found_skills.append(skill)
 
-    with col2:
+    # ---------------- REQUIRED SKILLS ---------------- #
 
-        st.subheader("🛠 Skills Found")
+    required_skills = []
 
-        if found_skills:
+    if job_description:
 
-            for skill in found_skills:
+        required_skills = [
+            skill for skill in skills
+            if skill.lower() in job_description.lower()
+        ]
 
-                st.markdown(
-                    f"""
-                    <span style="
-                    background-color:#4CAF50;
-                    padding:8px;
-                    border-radius:10px;
-                    color:white;
-                    margin:5px;
-                    display:inline-block;
-                    ">
-                    {skill}
-                    </span>
-                    """,
-                    unsafe_allow_html=True
-                )
+    # ---------------- MATCH PERCENTAGE ---------------- #
 
-        else:
-            st.warning("No matching skills found")
+    if required_skills:
 
-    st.write("---")
+        matched_required_skills = [
+            skill for skill in required_skills
+            if skill in found_skills
+        ]
 
-    # ---------------- MATCH PERCENTAGE ----------------
+        match_percentage = (
+            len(matched_required_skills)
+            / len(required_skills)
+        ) * 100
 
-    st.subheader("📊 Skill Match Percentage")
+    else:
 
-    required_skills = len(skills)
+        match_percentage = 0
 
-    match_percentage = (
-        len(found_skills) / required_skills
-    ) * 100
+    # ---------------- MISSING SKILLS ---------------- #
 
-    st.progress(int(match_percentage))
-
-    st.write(f"### {match_percentage:.2f}% Match")
-
-    # ---------------- ATS SCORE ----------------
-
-    st.write("---")
-
-    st.subheader("📄 ATS Resume Score")
-
-    ats_score = min(
-        int(match_percentage + 20),
-        100
+    missing_skills = list(
+        set(required_skills) - set(found_skills)
     )
 
-    st.metric(
-        label="ATS Score",
-        value=f"{ats_score}/100"
-    )
-
-    # ---------------- MISSING SKILLS ----------------
+    # ---------------- CATEGORY ---------------- #
 
     st.write("---")
 
-    st.subheader("❌ Missing Skills")
+    st.subheader("🎯 Predicted Resume Category")
 
-    missing_skills = []
+    st.success(predicted_category)
 
-    for skill in skills:
-        if skill not in found_skills:
-            missing_skills.append(skill)
+    # ---------------- FOUND SKILLS ---------------- #
 
-    if missing_skills:
+    st.write("---")
 
-        for skill in missing_skills[:8]:
+    st.subheader("🛠 Skills Found In Resume")
+
+    if found_skills:
+
+        for skill in found_skills:
 
             st.markdown(
-                f"""
-                <span style="
-                background-color:#FF4B4B;
-                padding:8px;
-                border-radius:10px;
-                color:white;
-                margin:5px;
-                display:inline-block;
-                ">
-                {skill}
-                </span>
-                """,
+                f'<div class="skill-box">{skill}</div>',
                 unsafe_allow_html=True
             )
 
-    # ---------------- PIE CHART ----------------
+    else:
+
+        st.warning("No skills detected")
+
+    # ---------------- REQUIRED SKILLS ---------------- #
 
     st.write("---")
 
-    st.subheader("📈 Resume Analysis Chart")
+    st.subheader("📌 Required Skills")
 
-    labels = [
-        "Matched Skills",
-        "Missing Skills"
-    ]
+    if required_skills:
 
-    values = [
-        len(found_skills),
-        len(missing_skills)
-    ]
+        for skill in required_skills:
 
-    fig, ax = plt.subplots()
+            st.markdown(
+                f'<div class="skill-box">{skill}</div>',
+                unsafe_allow_html=True
+            )
 
-    ax.pie(
-        values,
-        labels=labels,
-        autopct='%1.1f%%'
+    else:
+
+        st.warning("No job description provided")
+
+    # ---------------- RECOMMENDED SKILLS ---------------- #
+
+    st.write("---")
+
+    st.subheader("📚 Recommended Skills To Learn")
+
+    if missing_skills:
+
+        for skill in missing_skills:
+
+            st.markdown(
+                f'<div class="skill-box">{skill}</div>',
+                unsafe_allow_html=True
+            )
+
+    else:
+
+        st.success("Excellent! No missing skills")
+
+    # ---------------- ATS SCORE ---------------- #
+
+    st.write("---")
+
+    st.subheader("📊 ATS Resume Match Score")
+
+    st.progress(int(match_percentage))
+
+    st.markdown(
+        f"""
+        <div class="match-box">
+        <h1>{match_percentage:.2f}%</h1>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    st.pyplot(fig)
+    # ---------------- RESUME STRENGTH ---------------- #
 
-    # ---------------- RESUME TEXT ----------------
+    st.subheader("💡 Resume Strength")
+
+    if match_percentage >= 80:
+
+        st.success("Excellent Resume 🚀")
+
+    elif match_percentage >= 60:
+
+        st.info("Good Resume 👍")
+
+    elif match_percentage >= 40:
+
+        st.warning("Average Resume ⚠️")
+
+    else:
+
+        st.error("Weak Resume ❌")
+
+    # ---------------- ELIGIBILITY ---------------- #
+
+    if match_percentage >= 70:
+
+        st.success("✅ Eligible For This Role")
+
+    elif match_percentage >= 40:
+
+        st.warning("⚠️ Partially Eligible - Improve Some Skills")
+
+    else:
+
+        st.error("❌ Not Eligible - Need More Skills")
+
+    # ---------------- RECRUITER FEEDBACK ---------------- #
 
     st.write("---")
 
-    with st.expander("📄 View Extracted Resume Text"):
+    st.subheader("🧠 Recruiter AI Feedback")
 
-        st.write(resume_text[:3000])
+    if match_percentage >= 80:
 
-# ---------------- FOOTER ----------------
+        st.success("""
+Candidate has strong technical skills matching the job requirements.
+Highly recommended for interview.
+""")
+
+    elif match_percentage >= 60:
+
+        st.info("""
+Candidate matches many required skills.
+Can be considered for interview round.
+""")
+
+    else:
+
+        st.warning("""
+Candidate needs improvement in technical skills
+to match this role effectively.
+""")
+
+# ---------------- FOOTER ---------------- #
 
 st.write("---")
 
 st.markdown(
-    """
-    <center>
-    Developed with ❤️ using Machine Learning & NLP
-    </center>
-    """,
+    "<h5 style='text-align:center;'>Developed with ❤️ using Machine Learning & NLP</h5>",
     unsafe_allow_html=True
 )
