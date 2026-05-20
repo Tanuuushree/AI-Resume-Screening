@@ -1,55 +1,126 @@
-# app.py
-
 import streamlit as st
 import pickle
 import pdfplumber
 import re
 
-# Load model and vectorizer
+# ---------------- PAGE CONFIG ----------------
+
+st.set_page_config(
+    page_title="AI Resume Screening System",
+    page_icon="📄",
+    layout="wide"
+)
+
+# ---------------- LOAD MODEL ----------------
+
 model = pickle.load(open("model.pkl", "rb"))
 vectorizer = pickle.load(open("vectorizer.pkl", "rb"))
 
-# Clean text
+# ---------------- CLEAN TEXT ----------------
+
 def clean_text(text):
     text = re.sub(r'http\\S+', '', text)
     text = re.sub(r'[^A-Za-z ]', '', text)
     text = text.lower()
     return text
 
-# Extract text from PDF
+# ---------------- EXTRACT PDF TEXT ----------------
+
 def extract_text(pdf_file):
     text = ""
+
     with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
-            text += page.extract_text()
+            extracted = page.extract_text()
+
+            if extracted:
+                text += extracted
+
     return text
 
-# Streamlit UI
-st.title("AI Resume Screening System")
+# ---------------- SIDEBAR ----------------
+
+st.sidebar.title("📌 About Project")
+
+st.sidebar.info(
+    """
+    AI-powered Resume Screening System
+
+    Features:
+    ✅ Resume Category Prediction
+    ✅ Skill Extraction
+    ✅ Skill Match Percentage
+    ✅ PDF Resume Upload
+    """
+)
+
+st.sidebar.write("Built using:")
+st.sidebar.write("- Python")
+st.sidebar.write("- Machine Learning")
+st.sidebar.write("- NLP")
+st.sidebar.write("- Streamlit")
+
+# ---------------- MAIN TITLE ----------------
+
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #4CAF50;'>
+    📄 AI Resume Screening System
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <p style='text-align: center; font-size:18px;'>
+    Upload your resume and let AI analyze it instantly 🚀
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
+st.write("---")
+
+# ---------------- FILE UPLOAD ----------------
 
 uploaded_file = st.file_uploader(
-    "Upload Resume PDF",
+    "📤 Upload Resume PDF",
     type=["pdf"]
 )
 
+# ---------------- PREDICTION ----------------
+
 if uploaded_file is not None:
 
-    # Extract text
-    resume_text = extract_text(uploaded_file)
+    with st.spinner("Analyzing Resume..."):
 
-    # Clean resume text
-    cleaned_resume = clean_text(resume_text)
+        # Extract text
+        resume_text = extract_text(uploaded_file)
 
-    # Convert text into vector
-    resume_vector = vectorizer.transform([cleaned_resume])
+        # Clean text
+        cleaned_resume = clean_text(resume_text)
 
-    # Predict category
-    prediction = model.predict(resume_vector)
+        # Vectorize
+        resume_vector = vectorizer.transform([cleaned_resume])
 
-    # Display prediction
-    st.success(f"Predicted Job Category: {prediction[0]}")
+        # Prediction
+        prediction = model.predict(resume_vector)
 
-    # Skills list
+    st.success("✅ Resume Analysis Completed")
+
+    # ---------------- RESULT SECTION ----------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.subheader("🎯 Predicted Job Category")
+
+        st.info(prediction[0])
+
+    # ---------------- SKILL EXTRACTION ----------------
+
     skills = [
         "python",
         "sql",
@@ -61,32 +132,73 @@ if uploaded_file is not None:
         "html",
         "css",
         "javascript",
-        "c"
+        "communication",
+        "data analysis"
     ]
 
-    # Find matching skills
     found_skills = []
 
     for skill in skills:
         if skill in cleaned_resume:
             found_skills.append(skill)
 
-    # Display skills
-    st.subheader("Skills Found")
+    with col2:
 
-    if found_skills:
-        st.write(found_skills)
-    else:
-        st.write("No matching skills found")
+        st.subheader("🛠 Skills Found")
 
-    # Match percentage
+        if found_skills:
+
+            for skill in found_skills:
+                st.markdown(
+                    f"""
+                    <span style="
+                    background-color:#4CAF50;
+                    padding:8px;
+                    border-radius:10px;
+                    color:white;
+                    margin:5px;
+                    display:inline-block;
+                    ">
+                    {skill}
+                    </span>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+        else:
+            st.warning("No matching skills found")
+
+    st.write("---")
+
+    # ---------------- MATCH PERCENTAGE ----------------
+
+    st.subheader("📊 Skill Match Percentage")
+
     required_skills = len(skills)
 
     match_percentage = (
         len(found_skills) / required_skills
     ) * 100
 
-    # Display match percentage
-    st.subheader("Skill Match Percentage")
+    st.progress(int(match_percentage))
 
-    st.write(f"{match_percentage:.2f}%")
+    st.write(f"### {match_percentage:.2f}% Match")
+
+    # ---------------- RESUME PREVIEW ----------------
+
+    with st.expander("📄 View Extracted Resume Text"):
+
+        st.write(resume_text[:3000])
+
+# ---------------- FOOTER ----------------
+
+st.write("---")
+
+st.markdown(
+    """
+    <center>
+    Developed with ❤️ using Machine Learning & NLP
+    </center>
+    """,
+    unsafe_allow_html=True
+)
