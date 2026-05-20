@@ -2,6 +2,7 @@ import streamlit as st
 import pickle
 import pdfplumber
 import re
+import matplotlib.pyplot as plt
 
 # ---------------- PAGE CONFIG ----------------
 
@@ -24,13 +25,14 @@ def clean_text(text):
     text = text.lower()
     return text
 
-# ---------------- EXTRACT PDF TEXT ----------------
+# ---------------- EXTRACT TEXT ----------------
 
 def extract_text(pdf_file):
     text = ""
 
     with pdfplumber.open(pdf_file) as pdf:
         for page in pdf.pages:
+
             extracted = page.extract_text()
 
             if extracted:
@@ -49,6 +51,8 @@ st.sidebar.info(
     Features:
     ✅ Resume Category Prediction
     ✅ Skill Extraction
+    ✅ ATS Resume Score
+    ✅ Missing Skills Detection
     ✅ Skill Match Percentage
     ✅ PDF Resume Upload
     """
@@ -60,7 +64,7 @@ st.sidebar.write("- Machine Learning")
 st.sidebar.write("- NLP")
 st.sidebar.write("- Streamlit")
 
-# ---------------- MAIN TITLE ----------------
+# ---------------- TITLE ----------------
 
 st.markdown(
     """
@@ -89,7 +93,7 @@ uploaded_file = st.file_uploader(
     type=["pdf"]
 )
 
-# ---------------- PREDICTION ----------------
+# ---------------- MAIN LOGIC ----------------
 
 if uploaded_file is not None:
 
@@ -104,7 +108,7 @@ if uploaded_file is not None:
         # Vectorize
         resume_vector = vectorizer.transform([cleaned_resume])
 
-        # Prediction
+        # Predict
         prediction = model.predict(resume_vector)
 
     st.success("✅ Resume Analysis Completed")
@@ -119,12 +123,13 @@ if uploaded_file is not None:
 
         st.info(prediction[0])
 
-    # ---------------- SKILL EXTRACTION ----------------
+    # ---------------- SKILLS ----------------
 
     skills = [
         "python",
         "sql",
         "machine learning",
+        "deep learning",
         "excel",
         "power bi",
         "tableau",
@@ -133,7 +138,14 @@ if uploaded_file is not None:
         "css",
         "javascript",
         "communication",
-        "data analysis"
+        "data analysis",
+        "react",
+        "mongodb",
+        "nodejs",
+        "streamlit",
+        "nlp",
+        "tensorflow",
+        "pandas"
     ]
 
     found_skills = []
@@ -149,6 +161,7 @@ if uploaded_file is not None:
         if found_skills:
 
             for skill in found_skills:
+
                 st.markdown(
                     f"""
                     <span style="
@@ -184,7 +197,83 @@ if uploaded_file is not None:
 
     st.write(f"### {match_percentage:.2f}% Match")
 
-    # ---------------- RESUME PREVIEW ----------------
+    # ---------------- ATS SCORE ----------------
+
+    st.write("---")
+
+    st.subheader("📄 ATS Resume Score")
+
+    ats_score = min(
+        int(match_percentage + 20),
+        100
+    )
+
+    st.metric(
+        label="ATS Score",
+        value=f"{ats_score}/100"
+    )
+
+    # ---------------- MISSING SKILLS ----------------
+
+    st.write("---")
+
+    st.subheader("❌ Missing Skills")
+
+    missing_skills = []
+
+    for skill in skills:
+        if skill not in found_skills:
+            missing_skills.append(skill)
+
+    if missing_skills:
+
+        for skill in missing_skills[:8]:
+
+            st.markdown(
+                f"""
+                <span style="
+                background-color:#FF4B4B;
+                padding:8px;
+                border-radius:10px;
+                color:white;
+                margin:5px;
+                display:inline-block;
+                ">
+                {skill}
+                </span>
+                """,
+                unsafe_allow_html=True
+            )
+
+    # ---------------- PIE CHART ----------------
+
+    st.write("---")
+
+    st.subheader("📈 Resume Analysis Chart")
+
+    labels = [
+        "Matched Skills",
+        "Missing Skills"
+    ]
+
+    values = [
+        len(found_skills),
+        len(missing_skills)
+    ]
+
+    fig, ax = plt.subplots()
+
+    ax.pie(
+        values,
+        labels=labels,
+        autopct='%1.1f%%'
+    )
+
+    st.pyplot(fig)
+
+    # ---------------- RESUME TEXT ----------------
+
+    st.write("---")
 
     with st.expander("📄 View Extracted Resume Text"):
 
